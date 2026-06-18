@@ -79,3 +79,4 @@ void credito (char *archivo_montos, int p[]){}
 void debito(char *archivo_montos, int p[]){}
 
 
+
