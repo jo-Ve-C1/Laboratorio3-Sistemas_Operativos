@@ -10,7 +10,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/types.h>
-#include <sys?wait.h>
+#include <sys/wait.h>
 #include <semaphore.h>
 #include <sys/mman.h>
 
@@ -46,7 +46,7 @@ exit (EXIT_FAILURE);
 
 //Hijo 1: Credito
 pid_credito = fork();
-if(pid_credito == 0){
+if(pid_credito == -1){
 perror("error en fork credito");
 exit(1);
 }
@@ -62,7 +62,7 @@ credito("credito.txt", fd_credito);
 
 //Hijo 2: Debito
 pid_debito = fork ();
-if(pid_debito == 0){
+if(pid_debito == -1){
 perror("Error en fork debito");
 exit(1);
 }
@@ -86,14 +86,15 @@ while(credito_activo || debito_activo){
 
 if(credito_activo){
 if(read(fd_credito[0], &monto_recibido, sizeof(double))> 0){
-printf("[Credito]: recibido del hijo  -> &lf\n", monto_recibido);
-}else {
+printf("[Credito]: recibido del hijo  -> %lf\n", monto_recibido);
+}
+else {
 credito_activo = 0;
 }
 }
 if(debito_activo){
 if(read(fd_debito[0], &monto_recibido, sizeof(double))> 0){
-printf("[Debito]: recibio del hijo -> &lf\n", monto_recibido
+printf("[Debito]: recibio del hijo -> %lf\n", monto_recibido);
 }else{
 debito_activo = 0;
 }
@@ -118,8 +119,49 @@ return 0;
 
 }
 
-void credito (char *archivo_montos, int p[]){}
+void credito (char *archivo_montos, int p[]){
+FILE *arch = fopen(archivo_montos, "r");
+if(arch == NULL) {
+printf("Error al abrir archivo de credito\n");
+exit(1);
+}
+double valor;
+while(fscanf(arch, "%lf", &valor)==1){
+sem_wait(sem);//bloqueo semaforo
 
-void debito(char *archivo_montos, int p[]){}
+*saldo += valor;
+write(p[1], &valor, sizeof(double));//mando dato al padre
+
+sem_post(sem);//libero semaforo
+}
+fclose(arch);
+close(p[1]); //cierro el pipe al terminal
+exit(0);
+}
+
+
+void debito(char *archivo_montos, int p[]){
+FILE *arch = fopen(archivo_montos, "r");
+if(arch==NULL){
+printf("error en leer el archivo debito\n");
+exit(1);
+}
+
+double valor;
+while(fscanf(arch, "%lf", &valor) == 1){
+sem_wait(sem); //bloqueo semaforo
+
+*saldo -= valor;
+write(p[1], &valor, sizeof(double)); //envia el dato al padre
+
+sem_post(sem); //libero semaforo
+}
+
+fclose(arch);
+close(p[1]);
+exit(0);
+
+}
+
 
 
