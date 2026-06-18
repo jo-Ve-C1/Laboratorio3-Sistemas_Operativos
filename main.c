@@ -2,6 +2,8 @@
    Materia: Inforatica II
    Autores: Bañares, Pablo
 	    Velazquez Cruz, Joel
+  Url:https://github.com/jo-Ve-C1/Laboratorio3-Sistemas_Operativos.git
+
 
  */
 #include <stdio.h>
@@ -26,6 +28,13 @@ int main(){
 	printf("[Padre]: Iniciando \n");
 sem = mmap(NULL, sizeof(sem_t), PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS,-1, 0);
 saldo = mmap(NULL, sizeof(double), PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS,-1, 0);
+
+if(sem == MAP_FAILED || saldo == MAP_FAILED) {
+perror("error en mmap");
+exit(EXIT_FAILURE);
+
+}
+
 sem_init(sem, 1, 1);
 *saldo = 0.0;
 
@@ -34,35 +43,71 @@ perror("Error al asignar memoria compartida con mmap");
 exit (EXIT_FAILURE);
 }
 
+
+//Hijo 1: Credito
 pid_credito = fork();
+if(pid_credito == 0){
+perror("error en fork credito");
+exit(1);
+}
+
 
 if (pid_credito == 0){
 close(fd_credito[0]);
 close(fd_debito[0]);
 close(fd_debito[1]);
 
-exit(EXIT_SUCCESS);
+credito("credito.txt", fd_credito);
 }
 
+//Hijo 2: Debito
 pid_debito = fork ();
+if(pid_debito == 0){
+perror("Error en fork debito");
+exit(1);
+}
+
 
 if (pid_debito == 0){
 close(fd_debito[0]);
 close(fd_credito[0]);
 close(fd_credito[1]);
 
-exit(EXIT_SUCCES);
+debito("debito.txt", fd_debito);
 }
 
 close(fd_credito[1]);
 close(fd_debito[1]);
 
-printf("[padre]: Canales de comunicacion listos\n");
+int credito_activo = 1, debito_activo = 1;
+double monto_recibido;
+
+while(credito_activo || debito_activo){
+
+if(credito_activo){
+if(read(fd_credito[0], &monto_recibido, sizeof(double))> 0){
+printf("[Credito]: recibido del hijo  -> &lf\n", monto_recibido);
+}else {
+credito_activo = 0;
+}
+}
+if(debito_activo){
+if(read(fd_debito[0], &monto_recibido, sizeof(double))> 0){
+printf("[Debito]: recibio del hijo -> &lf\n", monto_recibido
+}else{
+debito_activo = 0;
+}
+}
+}
 
 
 wait(NULL);
 wait(NULL);
 
+printf("\nSaldo final de la cuenta = %lf\n", *saldo);
+
+
+//Liberamos todos los recursos abiertos
 close(fd_credito[0]);
 close(fd_debito[0]);
 sem_destroy(sem);
